@@ -1,0 +1,164 @@
+---
+title: "BTL"
+output: html_document
+date: "2024-03-29"
+---
+
+1.Data Reading and Data Cleaning
+
+- Loading the libraries used in the assignment
+
+```{r}
+library('dplyr')
+library('magrittr')
+library('GGally')
+library('corrplot')
+library('MASS')
+library('car')
+```
+
+- Read the dataset All_GPUs.csv and import it into the dataframe GPU_data
+```{r}
+GPU_data <- read.csv("All_GPUs.csv")
+summary(GPU_data)
+```
+- Extracting features Manufacturer, Process, Max_Power, Memory_Speed, Memory_Bus, Pixel_Rate, Texture_Rate and Memory_Bandwidth from GPU_data and stores them in new dataframe new_data
+```{r}
+new_data <- GPU_data %>% dplyr::select("Manufacturer","Process","Max_Power","Memory_Speed","Memory_Bus","Memory","Core_Speed","Memory_Bandwidth")
+str(new_data)
+```
+- Eliminate the unit of Process 
+```{r}
+new_data$Process <- as.numeric(sub("nm", "", new_data$Process))
+```
+
+- Eliminate the unit of Max_Power
+```{r}
+new_data$Max_Power <- as.numeric(sub("Watts", "" , new_data$Max_Power))
+```
+
+- Eliminate the unit of Memory_Speed
+```{r}
+new_data$Memory_Speed <- as.numeric(sub("MHz", "", new_data$Memory_Speed))
+```
+
+- Eliminate the unit of Memory_Bus
+```{r}
+new_data$Memory_Bus <- as.numeric(sub("Bit", "", new_data$Memory_Bus))
+```
+
+- Eliminate the unit of Memory
+```{r}
+new_data$Memory <- as.numeric(sub("MB", "", new_data$Memory))
+```
+
+- Eliminate the unit of Core_Speed
+```{r}
+new_data$Core_Speed <- as.numeric(sub("MHz", "", new_data$Core_Speed))
+```
+- Eliminate the unit of Memory_Bandwidth
+```{r}
+new_data$Memory_Bandwidth <- as.numeric(sub("GB/sec", "", new_data$Memory_Bandwidth))
+```
+
+- Check for new_data 's NA and negatives
+
+```{r}
+colSums(is.na(new_data))
+```
+- Eliminate NA:
+```{r}
+new_data <- na.omit(new_data)
+```
+
+3. Data Visualization: 
+- Sum up basic information about a portion of numeric variables in the data set
+```{r}
+summary(new_data[,c(2:8)])
+```
+- Overview of the relation between each pair of variable
+```{r}
+ggpairs(new_data[,c(2:8)])
+```
+
+- Utilizing Histogram and Boxplot
+```{r}
+dtplot <- function (new_data , col , na.rm = TRUE) { # display the 2 plots side by side
+  hist ( new_data [[ col ]] ,
+  main = paste ( " Histogram of " , col ) ,
+  xlab = col,cex.main=1.2,
+  cex.lab=1.2)
+  boxplot ( new_data [[ col ]] ,
+  main = paste ( " Boxplot of " , col ),
+  horizontal = T ,
+  xlab = col ,
+  ylab = "" ,
+  las = 3,
+  cex.main=1.2,
+  cex.lab=1.2)
+}
+```
+
+- Plot each variable
+```{r}
+plot_all <- function(new_data, na.rm = TRUE) {
+  par(mfrow = c(1, 4))  
+  col_names <- names(new_data[,c(2:8)])
+  for (col in col_names) {
+    dtplot(new_data,col,na.rm)
+  }
+}
+plot_all(new_data)
+```
+- Heatmap
+```{r} 
+correlation_matrix <- cor(new_data[,c(2:8)])
+corrplot(correlation_matrix, method = "square", addCoef.col= "yellow",tl.col="black",tl.cex=1.1)
+```
+
+4. Multiple Linear Regression
+In this section, we will build a multiple linear regression model with Memory_Bandwidth as the dependent variable, and Process, Max_Power, Memory_Speed, Memory_Bus, Memory, Pixel_Rate, Texture_Rate as the independent variables. Our objective is to develop a predictive model that can accurately estimates Memory_Bandwidth based on other factors. 
+
+
+- Fitting the model:
+
+```{r}
+model1 <- lm(formula = Memory_Bandwidth ~ Core_Speed + Memory + Memory_Bus + Memory_Speed + Max_Power + Process, data = new_data)
+summary(model1)
+```
+- Create a new model remove the Memory_Speed variable: 
+
+```{r}
+model2 <- lm(formula = Memory_Bandwidth ~ Core_Speed + Memory + Memory_Bus + Max_Power + Process, data = new_data)
+summary(model2)
+```
+
+- Multicolinearity check:
+
+We conducted a VIF analysis in model2: 
+
+```{r}
+print(vif(model2))
+```
+
+- Factorial ANOVA
+Consider the factorial ANOVA test for model1: 
+```{r}
+Anova(model1, type=2)
+```
+Test the factorial ANOVA for model2:
+
+```{r}
+Anova(model2, type=2)
+```
+- Using ANOVA to compare 2 models:
+
+```{r}
+anova(model1, model2)
+```
+
+5. Residual plots
+
+```{r}
+plot(model2)
+```
